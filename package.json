@@ -1,0 +1,28 @@
+{
+	"name": "testProxy",
+	"version": "0.0.1",
+	"description": "A proxy to assist testing for networking protocols",
+	"author": {
+		"name": "Steven Guo",
+		"email": "sguo@vmware.com"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git@github.com:Sguo12/testProxy.git"
+	},
+    "private": true,
+    "scripts": {
+        "start": "./node_modules/.bin/nodemon proxy.js"
+    },
+    "dependencies": {
+		"http-proxy": "latest",
+        "minimist"  : "latest"
+	},
+    "devDependencies": {
+        "nodemon": "latest"
+    },
+	"engines": {
+		"node": "latest",
+		"npm":  "latest"
+	}
+}
