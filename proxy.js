@@ -8,6 +8,8 @@ var net = require('net');
 var https = require('https');
 var util = require('util');
 var argv = require('minimist')(process.argv.slice(2));
+var zlib = require('zlib');
+var exec = require('child_process').exec;
 
 var port = argv.p || 3000;
 
@@ -59,7 +61,7 @@ server.on('connect', function(req, socket, head) {
 
         // Data Received from Server
         proxySocket.on('data', function(d) {
-            //console.log('proxySocket data: ' + util.inspect(d));
+            //console.log('>>>>> proxySocket data: ' + util.inspect(d));
         });
 
         proxySocket.on('end', function() { 
@@ -76,7 +78,7 @@ server.on('connect', function(req, socket, head) {
         "Proxy-agent: Netscape-Proxy/1.1\r\n\r\n");
 
     socket.on('data', function(part) {
-        //console.log('clientSocket got data: ' + util.inspect(part));
+        //console.log('<<<<<<<< clientSocket got data: ' + util.inspect(part));
     });
 
     //
@@ -106,7 +108,6 @@ function createMITMHttpsServer(port) {
         uri = url.parse(req.url);
         console.log("got uri path: " + uri.path);
         console.log("got method: " + req.method);
-        console.log("got host: " + req.headers.host);
         console.log("got header: " + util.inspect(req.headers));
 
         var target = "https://" + req.headers.host + uri.path;
@@ -119,10 +120,38 @@ function createMITMHttpsServer(port) {
             processPendingActions(req, res);
 
         } else {
+        	
             proxy.web(req, res, { target: target });
+            req.on("data", function(part) {
+            	console.log("got request: " + part.toString('hex'));
+            	parseAndPrintwbXml(part);
+            });
+            
+            res.oldwrite = res.write;
+        	res.write = function (data) {  
+        		  switch (res._headers['content-encoding']) {
+        		    case 'gzip':
+        		    case 'deflate':
+                		zlib.unzip(data, function(err, data) {
+                			if (err) console.log('got err unzip data');
+                			else {
+                				console.log('got response: ' + data.toString('hex'));
+                				parseAndPrintwbXml(data);
+                			}
+                      		res.oldwrite(data);
+                		});
+
+        		    	break;
+
+        		    default:
+                  		res.oldwrite(data);
+        		    	break;
+        		  }
+        	   }
         }
     }).listen(port);
 }
+
 
 proxy.on('error', function (err, req, res) {
     res.writeHead(500, {
@@ -243,4 +272,14 @@ function processPendingActions(req, res) {
     }
 }
 
-
+/**
+ * @param data is a binary Buffer contains wbXml
+ * @returns
+ */
+function parseAndPrintwbXml(data) {
+	var shellCommand = 'echo "'  + data.toString('hex') + '" | runner';
+    var child = exec(shellCommand, function(err, stdout, stderr) {
+        if (err) throw err;
+        else console.log(stdout + stderr);
+    });
+}
