@@ -81,7 +81,7 @@ server.on('connect', function(req, socket, head) {
     
     function proxyConnectedToTarget(ptype) {
         proxySocket.on('end', function() { 
-	           console.log(ptype + ' proxySocket end');
+	           //console.log(ptype + ' proxySocket end');
         });
 	
 	    proxySocket.on('error', function(e) {
@@ -138,27 +138,32 @@ function createMITMHttpsServer(port) {
             	console.log("got request: " + part.toString('hex'));
             	parseAndPrintwbXml(part);
             });
-            
+           
             res.oldwrite = res.write;
-        	res.write = function (data) {  
+        	res.write = function (data) {
+        		console.log('got response data.......');
+        		res.oldwrite.apply(this, arguments);
+        		
         		  switch (res._headers['content-encoding']) {
         		    case 'gzip':
         		    case 'deflate':
-                		zlib.unzip(data, function(err, data) {
+                		zlib.unzip(data, function(err, unzipData) {
                 			if (err) console.log('got err unzip data');
                 			else {
-                				console.log('got response: ' + data.toString('hex'));
-                				parseAndPrintwbXml(data);
+                				console.log('got response: ' + unzipData.toString('hex'));
+                				parseAndPrintwbXml(unzipData);
                 			}
-                      		res.oldwrite(data);
                 		});
 
         		    	break;
 
         		    default:
-                  		res.oldwrite(data);
+        				console.log('got response: ' + data.toString('hex'));
+        		    	parseAndPrintwbXml(data);
+        		    	
         		    	break;
         		  }
+        		  
         	   }
         }
     }).listen(port);
