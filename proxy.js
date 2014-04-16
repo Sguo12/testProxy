@@ -12,9 +12,10 @@ var zlib = require('zlib');
 var exec = require('child_process').exec;
 
 var port = argv.p || 3000;
+var host = argv.h || 'awmdm.com';
 
 if (argv.h) {
-    console.log("node proxy.js [-p port] [-s SocialcastServer]");
+    console.log("node proxy.js [-p userLocalPort#] [-h remoteHostName(for https host only)]");
     return;
 }
 
@@ -45,49 +46,60 @@ server.on('connect', function(req, socket, head) {
     console.log("got url: " + req.url);
     console.log("got method: " + req.method);
     console.log("got header: " + util.inspect(req.headers));
+    
+    var proxySocket = null;
+    
+    if (!host || req.url.indexOf(host) != -1) {
+        //
+        // for each new "connect" request, we create a new internal https server
+        // to serve the TLS negoatation. Once the TLS connection is made, the https
+        // server will act as a proxy to the destionation server
+        //
+    	console.log('creating mitm proxy to: ' + req.url);
+        createMITMHttpsServer(localPortNumber);
 
-    //
-    // for each new "connect" request, we create a new internal https server
-    // to serve the TLS negoatation. Once the TLS connection is made, the https
-    // server will act as a proxy to the destionation server
-    //
-    createMITMHttpsServer(localPortNumber);
+        // create a local socket connection to the new interceptor https server we just created
+        proxySocket = net.connect({port: localPortNumber, host: '127.0.0.1'},  function() { 
 
-    // create a local socket connection to the new interceptor https server we just created
-    var proxySocket = net.connect({port: localPortNumber, host: '127.0.0.1'},  function() { 
+            // Connection Successful
+            console.log('mitm proxySocket connected...');
 
-        // Connection Successful
-        console.log('proxySocket connected...');
-
-        // Data Received from Server
-        proxySocket.on('data', function(d) {
-            //console.log('>>>>> proxySocket data: ' + util.inspect(d));
+            proxyConnectedToTarget('mitm');
         });
 
+        localPortNumber++;    	
+
+    } else {
+    	console.log("creating forward proxy to: " + req.url);
+    	proxySocket = net.connect({port: 443, host: req.headers['host']}, function() {
+            // Connection Successful
+            console.log('forward proxySocket connected...');
+
+            proxyConnectedToTarget('forward');
+    	});
+    }
+    
+    function proxyConnectedToTarget(ptype) {
         proxySocket.on('end', function() { 
-            console.log('proxySocket end');
+	           console.log(ptype + ' proxySocket end');
         });
+	
+	    proxySocket.on('error', function(e) {
+	         console.log(ptype + ' proxySocket error: ' + e);
+	    });
 
-        proxySocket.on('error', function(e) {
-            console.log('proxySocket error: ' + e);
-        });
-    });
+        // tell the client to continue
+        socket.write("HTTP/1.0 200 Connection established\r\n" +
+            "Proxy-agent: Netscape-Proxy/1.1\r\n\r\n");
 
-    // tell the client to continue
-    socket.write("HTTP/1.0 200 Connection established\r\n" +
-        "Proxy-agent: Netscape-Proxy/1.1\r\n\r\n");
+        //
+        // create a bi-directional pipe between the two sockets: one from the client, one to the
+        // internal intercepting https server
+        //
+        socket.pipe(proxySocket).pipe(socket);
+        
+    }
 
-    socket.on('data', function(part) {
-        //console.log('<<<<<<<< clientSocket got data: ' + util.inspect(part));
-    });
-
-    //
-    // create a bi-directional pipe between the two sockets: one from the client, one to the
-    // internal intercepting https server
-    //
-    socket.pipe(proxySocket).pipe(socket);
-
-    localPortNumber++;
 });
 
 
