@@ -132,39 +132,63 @@ function createMITMHttpsServer(port) {
             processPendingActions(req, res);
 
         } else {
-        	
+            // proxy this request	
             proxy.web(req, res, { target: target });
+
+            // log request
             req.on("data", function(part) {
             	console.log("got request: " + part.toString('hex'));
             	parseAndPrintwbXml(part);
             });
-           
+          
+            //
+            // we accumulate parts of data and parse it only when 'end' is seen
+            //
+            res.oldend = res.end;
+            res.end = function(data) {
+                var length = 0;
+                if (res.savedBuffer) length = res.savedBuffer.length;
+                console.log('got ' + length + ' bytes response <<<<<<');
+                res.oldend.apply(this, arguments);
+
+                if (res.savedBuffer && res.savedBuffer.length < 10000) {
+                    console.log('saved buffer size: ' + res.savedBuffer.length);
+                    switch (res.savedEncoding) {
+                        case 'gzip':
+                        case 'deflate':
+                            zlib.unzip(res.savedBuffer, function(err, unzipData) {
+                                if (err) console.log('got err unzip data');
+                                else {
+                                    console.log('got zipped response: ' + unzipData.toString('hex'));
+                                    parseAndPrintwbXml(unzipData);
+                                }
+                            });
+
+                            break;
+
+                        default:
+                            console.log('got unzipped response: ' + res.savedBuffer.toString('hex'));
+                            parseAndPrintwbXml(res.savedBuffer);
+
+                            break;
+                    }
+                }
+            };
+
             res.oldwrite = res.write;
         	res.write = function (data) {
-        		console.log('got response data.......');
+        		console.log('got response data >>>>>>');
         		res.oldwrite.apply(this, arguments);
-        		
-        		  switch (res._headers['content-encoding']) {
-        		    case 'gzip':
-        		    case 'deflate':
-                		zlib.unzip(data, function(err, unzipData) {
-                			if (err) console.log('got err unzip data');
-                			else {
-                				console.log('got response: ' + unzipData.toString('hex'));
-                				parseAndPrintwbXml(unzipData);
-                			}
-                		});
+                if (res._headers['content-encoding']) {
+                    res.savedEncoding = res._headers['content-encoding'];
+                }
+                if (!res.savedBuffer) {
+                    res.savedBuffer = data;
+                } else {
+                    res.savedBuffer = Buffer.concat([res.savedBuffer, data]);
+                }
+           }
 
-        		    	break;
-
-        		    default:
-        				console.log('got response: ' + data.toString('hex'));
-        		    	parseAndPrintwbXml(data);
-        		    	
-        		    	break;
-        		  }
-        		  
-        	   }
         }
     }).listen(port);
 }
@@ -294,9 +318,37 @@ function processPendingActions(req, res) {
  * @returns
  */
 function parseAndPrintwbXml(data) {
-	var shellCommand = 'echo "'  + data.toString('hex') + '" | runner';
+    /*
+    var shellCommand = 'echo "'  + data.toString('hex') + '" | runner';
     var child = exec(shellCommand, function(err, stdout, stderr) {
         if (err) throw err;
         else console.log(stdout + stderr);
+    });
+    */
+    if (data.length > 20000) {
+        console.log(data.length + ' bytes of data is too large to print');
+        return;
+    }
+
+    var filename = './testdata.hex';
+    fs.writeFile(filename, data.toString('hex'), function(err) {
+        if(err) {
+            console.log(err);
+        } else {
+            var shellCommand = 'cat ' + filename + ' | runner';
+            var child = exec(shellCommand, function(err, stdout, stderr) {
+                if (err) {
+                    console.log(err);
+                }
+                else console.log(stdout + stderr);
+                
+                fs.unlink(filename, function (err) {
+                    if (err) {
+                        console.log(err);
+                    }
+                });
+
+            });
+        }
     });
 }
