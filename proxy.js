@@ -33,8 +33,13 @@ var server = require('http').createServer(function(req, res) {
     // You can define here your custom logic to handle the request
     // and then proxy the request.
     //
-    uri = url.parse(req.url);
-    proxy.web(req, res, { target: uri.href });
+    
+    if (req.url.substr(0, 22) == '/api/testproxy/actions') {
+        processOurAPI(req, res);
+    } else {
+        uri = url.parse(req.url);
+        proxy.web(req, res, { target: uri.href });
+    }
 });
 
 console.log("listening on port " + port)
@@ -116,6 +121,7 @@ var options = {
 // for our own api, process it, otherwise pass to the proxy
 //
 function createMITMHttpsServer(port) {
+    console.log('create local https server on port: ' + port);
     https.createServer(options, function (req, res) {
         uri = url.parse(req.url);
         console.log("got uri path: " + uri.path);
@@ -125,10 +131,7 @@ function createMITMHttpsServer(port) {
         var target = "https://" + req.headers.host + uri.path;
         console.log("forward target: " + target);
 
-        if (req.url.substr(0, 22) == '/api/testproxy/actions') {
-            processOurAPI(req, res);
-
-        } else if (pendingActions.length > 0) {
+        if (pendingActions.length > 0) {
             processPendingActions(req, res);
 
         } else {
@@ -216,6 +219,7 @@ var pendingActions = [];
 var actionTypes = ['return401', 'return500', 'passthrough', 'droprequest', 'longtimeout'];
 
 function return401Action(req, res) {
+    console.log('fake a 401');
     res.writeHead(401, {
                   'Content-Type': 'text/plain'
                   });
@@ -224,6 +228,7 @@ function return401Action(req, res) {
 }
 
 function return500Action(req, res) {
+    console.log('fake a 500');
     res.writeHead(500, {
                   'Content-Type': 'text/plain'
                   });
