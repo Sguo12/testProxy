@@ -13,9 +13,10 @@ var exec = require('child_process').exec;
 
 var port = argv.p || 3000;
 var host = argv.h || 'awmdm.com';
+var verbose = argv.v || false;
 
 if (argv.h) {
-    console.log("node proxy.js [-p userLocalPort#] [-h remoteHostName(for https host only)]");
+    console.log("node proxy.js -v(verbos) [-p userLocalPort#] [-h remoteHostName(for https host only)]");
     return;
 }
 
@@ -140,8 +141,10 @@ function createMITMHttpsServer(port) {
 
             // log request
             req.on("data", function(part) {
-            	console.log("got request: " + part.toString('hex'));
-            	parseAndPrintwbXml(part);
+                if (verbose) {
+            	    console.log("got request: " + part.toString('hex'));
+            	    parseAndPrintwbXml(part);
+                }
             });
           
             //
@@ -161,7 +164,7 @@ function createMITMHttpsServer(port) {
                         case 'deflate':
                             zlib.unzip(res.savedBuffer, function(err, unzipData) {
                                 if (err) console.log('got err unzip data');
-                                else {
+                                else if (verbose) {
                                     console.log('got zipped response: ' + unzipData.toString('hex'));
                                     parseAndPrintwbXml(unzipData);
                                 }
@@ -170,8 +173,10 @@ function createMITMHttpsServer(port) {
                             break;
 
                         default:
-                            console.log('got unzipped response: ' + res.savedBuffer.toString('hex'));
-                            parseAndPrintwbXml(res.savedBuffer);
+                            if (verbose) {
+                                console.log('got unzipped response: ' + res.savedBuffer.toString('hex'));
+                                parseAndPrintwbXml(res.savedBuffer);
+                            }
 
                             break;
                     }

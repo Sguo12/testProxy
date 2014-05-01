@@ -23,14 +23,17 @@ npm install
 
 ###New API endpoints:
 
-* /api/testproxy/?return401=1
-* /api/testproxy/?return500=5
-* /api/testproxy/?droprequest=3
-* /api/testproxy/?longtimeout=2
-* /api/testproxy/?passthrough=1
+* /api/testproxy/actions
+* /api/testproxy/actions?return401=1
+* /api/testproxy/actions?return500=5
+* /api/testproxy/actions?droprequest=3
+* /api/testproxy/actions?longtimeout=2
+* /api/testproxy/actions?passthrough=1
 
-The setters can be combined, so '/api/testproxy/?return401=2&passthrough=3&return500=1' will send out two 401
+The setters can be combined, so '/api/testproxy/actions?return401=2&passthrough=3&return500=1' will send out two 401
 followed by three passthrough, then one 500.
+
+A call to the endpoint without any action will clear the pending actions
 
 Note that the sequence of these command is straightly followed.
 
