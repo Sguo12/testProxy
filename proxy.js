@@ -35,8 +35,14 @@ var server = require('http').createServer(function(req, res) {
     // and then proxy the request.
     //
     
-    if (req.url.substr(0, 22) == '/api/testproxy/actions') {
+    if (req.url.substr(0, 22) === '/api/testproxy/actions') {
         processOurAPI(req, res);
+    } else if (req.url === '/api/testproxy/help') {
+         
+        res.writeHead(200, {'Content-Type': 'text/x-markdown; charset=UTF-8'} );
+   
+        var fileStream = fs.createReadStream('README.md');
+        fileStream.pipe(res);
     } else {
         uri = url.parse(req.url);
         proxy.web(req, res, { target: uri.href });
@@ -117,6 +123,69 @@ var options = {
     cert: fs.readFileSync('./self-ssl.crt')
 };
 
+function setupProxyToTarget(req, res, target) {
+    // proxy this request	
+    proxy.web(req, res, { target: target });
+
+    // log request
+    req.on("data", function(part) {
+        if (verbose) {
+            console.log("got request: " + part.toString('hex'));
+            parseAndPrintwbXml(part);
+        }
+    });
+
+    //
+    // we accumulate parts of data and parse it only when 'end' is seen
+    //
+    res.oldend = res.end;
+    res.end = function(data) {
+        var length = 0;
+        if (res.savedBuffer) length = res.savedBuffer.length;
+        console.log('got ' + length + ' bytes response <<<<<<');
+        res.oldend.apply(this, arguments);
+
+        if (res.savedBuffer && res.savedBuffer.length < 10000) {
+            console.log('saved buffer size: ' + res.savedBuffer.length);
+            switch (res.savedEncoding) {
+                case 'gzip':
+                case 'deflate':
+                    zlib.unzip(res.savedBuffer, function(err, unzipData) {
+                        if (err) console.log('got err unzip data');
+                        else if (verbose) {
+                            console.log('got zipped response: ' + unzipData.toString('hex'));
+                            parseAndPrintwbXml(unzipData);
+                        }
+                    });
+
+                    break;
+
+                default:
+                    if (verbose) {
+                        console.log('got unzipped response: ' + res.savedBuffer.toString('hex'));
+                        parseAndPrintwbXml(res.savedBuffer);
+                    }
+
+                    break;
+            }
+        }
+    };
+
+    res.oldwrite = res.write;
+    res.write = function (data) {
+        console.log('got response data >>>>>>');
+        res.oldwrite.apply(this, arguments);
+        if (res._headers['content-encoding']) {
+            res.savedEncoding = res._headers['content-encoding'];
+        }
+        if (!res.savedBuffer) {
+            res.savedBuffer = data;
+        } else {
+            res.savedBuffer = Buffer.concat([res.savedBuffer, data]);
+        }
+    }
+}
+
 //
 // create a https server and watch all the requests coming in,
 // for our own api, process it, otherwise pass to the proxy
@@ -136,67 +205,7 @@ function createMITMHttpsServer(port) {
             processPendingActions(req, res);
 
         } else {
-            // proxy this request	
-            proxy.web(req, res, { target: target });
-
-            // log request
-            req.on("data", function(part) {
-                if (verbose) {
-            	    console.log("got request: " + part.toString('hex'));
-            	    parseAndPrintwbXml(part);
-                }
-            });
-          
-            //
-            // we accumulate parts of data and parse it only when 'end' is seen
-            //
-            res.oldend = res.end;
-            res.end = function(data) {
-                var length = 0;
-                if (res.savedBuffer) length = res.savedBuffer.length;
-                console.log('got ' + length + ' bytes response <<<<<<');
-                res.oldend.apply(this, arguments);
-
-                if (res.savedBuffer && res.savedBuffer.length < 10000) {
-                    console.log('saved buffer size: ' + res.savedBuffer.length);
-                    switch (res.savedEncoding) {
-                        case 'gzip':
-                        case 'deflate':
-                            zlib.unzip(res.savedBuffer, function(err, unzipData) {
-                                if (err) console.log('got err unzip data');
-                                else if (verbose) {
-                                    console.log('got zipped response: ' + unzipData.toString('hex'));
-                                    parseAndPrintwbXml(unzipData);
-                                }
-                            });
-
-                            break;
-
-                        default:
-                            if (verbose) {
-                                console.log('got unzipped response: ' + res.savedBuffer.toString('hex'));
-                                parseAndPrintwbXml(res.savedBuffer);
-                            }
-
-                            break;
-                    }
-                }
-            };
-
-            res.oldwrite = res.write;
-        	res.write = function (data) {
-        		console.log('got response data >>>>>>');
-        		res.oldwrite.apply(this, arguments);
-                if (res._headers['content-encoding']) {
-                    res.savedEncoding = res._headers['content-encoding'];
-                }
-                if (!res.savedBuffer) {
-                    res.savedBuffer = data;
-                } else {
-                    res.savedBuffer = Buffer.concat([res.savedBuffer, data]);
-                }
-           }
-
+            setupProxyToTarget(req, res, target);            
         }
     }).listen(port);
 }
