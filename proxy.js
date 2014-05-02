@@ -119,8 +119,8 @@ server.on('connect', function(req, socket, head) {
 // use thse options to start our local https server
 //
 var options = {
-    key: fs.readFileSync('./key.pem'),
-    cert: fs.readFileSync('./cert.pem')
+    key: fs.readFileSync('./awmdm-key.pem'),
+    cert: fs.readFileSync('./awmdm-cert.pem')
 };
 
 function setupProxyToTarget(req, res, target) {
@@ -272,7 +272,6 @@ function longtimeoutAction(req, res, target) {
 }
 
 function invalidSyncKeyAction(req, res, target) {
-    console.log(util.inspect(req));
     if (req.url.indexOf('Cmd=Sync') < 0) {
 	return false;
     } else {
