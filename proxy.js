@@ -278,12 +278,29 @@ function invalidSyncKeyAction(req, res, target) {
         return false;
     } else {
         var responseHex = "03016a00455c4f4b0330000152033500014e03330001010101";
+        console.log('API return invalid sync key');
         res.writeHead(200, {
             'Content-Type': 'application/vnd.ms-sync.wbxml'
         });
 
         res.end(responseHex);
         return true;
+    }
+}
+
+
+function folderSyncErrorAction(req, res, target) {
+    if (req.url.indexOf('Cmd=FolderSync') < 0) {
+        return false;
+    } else {
+        console.log('API return 500 for FolderSync');
+        res.writeHead(500, {
+            'Content-Type': 'text/plain'
+        });
+
+        res.end('Really bad things happened');
+
+       return true;
     }
 }
 
@@ -298,6 +315,7 @@ var actionTable = {return401 : return401Action,
     droprequest : droprequestAction,
     longtimeout : longtimeoutAction,
     invalidsynckey : invalidSyncKeyAction,
+    foldersyncerror : folderSyncErrorAction,
     protocolerror : protocolErrorAction
 };
 
