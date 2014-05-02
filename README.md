@@ -5,6 +5,7 @@
 * Passthrough proxy that prints everything out to console
 * return 401, 500 selectively by calling the new API
 * return long timeout, drop calls selectively by calling API
+* return EAS sync invalid key if specified
 * Uses self signed certificate so that client under test has to accept that
 * new API can be added to aid in other tests
 
@@ -29,6 +30,7 @@ npm install
 * /api/testproxy/actions?droprequest=3
 * /api/testproxy/actions?longtimeout=2
 * /api/testproxy/actions?passthrough=1
+* /api/testproxy/actions?invalidsynckey=1
 
 The setters can be combined, so '/api/testproxy/actions?return401=2&passthrough=3&return500=1' will send out two 401
 followed by three passthrough, then one 500.

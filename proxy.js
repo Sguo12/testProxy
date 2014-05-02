@@ -256,6 +256,7 @@ function return500Action(req, res) {
 
 function passthroughAction(req, res, target) {
     setupProxyToTarget(req, res, target);
+
     return true;
 }
 
@@ -266,26 +267,28 @@ function droprequestAction(req, res) {
 
 function longtimeoutAction(req, res, target) {
     setTimeout(function() {
-		    setupProxyToTarget(req, res, target);
-               }, 75000);
+        setupProxyToTarget(req, res, target);
+    }, 75000);
+
     return true;
 }
 
 function invalidSyncKeyAction(req, res, target) {
     if (req.url.indexOf('Cmd=Sync') < 0) {
-	return false;
+        return false;
     } else {
         var responseHex = "03016a00455c4f4b0330000152033500014e03330001010101";
-	res.writeHead(200, {
-                  'Content-Type': 'application/vnd.ms-sync.wbxml'
-                  });
+        res.writeHead(200, {
+            'Content-Type': 'application/vnd.ms-sync.wbxml'
+        });
 
-	res.end(responseHex);
-	return true;
-   }
+        res.end(responseHex);
+        return true;
+    }
 }
 
 function protocolErrorAction(req, res) {
+    return true;
 }
 
 // api end point action table
@@ -350,12 +353,12 @@ function processPendingActions(req, res, target) {
 
     if (action.callback(req, res, target)) {
         action.count--;
-	if (action.count > 0) {
-		pendingActions.unshift(action);
-	}
+        if (action.count > 0) {
+            pendingActions.unshift(action);
+        }
     } else {
-	    pendingActions.unshift(action);
-	    setupProxyToTarget(req, res, target);
+        pendingActions.unshift(action);
+        setupProxyToTarget(req, res, target);
     }
 }
 
