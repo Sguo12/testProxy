@@ -273,6 +273,7 @@ function longtimeoutAction(req, res, target) {
     return true;
 }
 
+
 function invalidSyncKeyAction(req, res, target) {
     if (req.url.indexOf('Cmd=Sync') < 0) {
         return false;
@@ -288,7 +289,38 @@ function invalidSyncKeyAction(req, res, target) {
     }
 }
 
-function folderSyncErrorAction(req, res, target) {
+function syncProtocolErrorAction(req, res, target) {
+    if (req.url.indexOf('Cmd=Sync') < 0) {
+        return false;
+    } else {
+        console.log('API return sync command with protocol error');
+        var responseHex = "03016a00454e0334000101";
+        res.writeHead(200, {
+            'Content-Type': 'application/vnd.ms-sync.wbxml'
+        });
+
+        res.end(new Buffer(responseHex, 'hex'));
+        return true;
+    }
+}
+
+function folderSyncError401Action(req, res, target) {
+    if (req.url.indexOf('Cmd=FolderSync') < 0) {
+        return false;
+    } else {
+        console.log('API return 401 for FolderSync');
+        res.writeHead(401, {
+            'Content-Type': 'text/plain'
+        });
+
+        res.end('invalid login');
+
+       return true;
+    }
+}
+
+
+function folderSyncError500Action(req, res, target) {
     if (req.url.indexOf('Cmd=FolderSync') < 0) {
         return false;
     } else {
@@ -303,8 +335,22 @@ function folderSyncErrorAction(req, res, target) {
     }
 }
 
+function syncError401Action(req, res, target) {
+    if (req.url.indexOf('Cmd=Sync') < 0) {
+        return false;
+    } else {
+        console.log('API return 401 for Sync command');
+        res.writeHead(401, {
+            'Content-Type': 'text/plain'
+        });
 
-function syncErrorAction(req, res, target) {
+        res.end('invalid login');
+
+       return true;
+    }
+}
+
+function syncError500Action(req, res, target) {
     if (req.url.indexOf('Cmd=Sync') < 0) {
         return false;
     } else {
@@ -329,9 +375,12 @@ var actionTable = {return401 : return401Action,
     passthrough : passthroughAction,
     droprequest : droprequestAction,
     longtimeout : longtimeoutAction,
+    foldersyncerror500 : folderSyncError500Action,
+    foldersyncerror401 : folderSyncError401Action,
     invalidsynckey : invalidSyncKeyAction,
-    foldersyncerror : folderSyncErrorAction,
-    syncerror : syncErrorAction,
+    syncprotocolerror : syncProtocolErrorAction,
+    syncerror500 : syncError500Action,
+    syncerror401: syncError401Action,
     protocolerror : protocolErrorAction
 };
 
