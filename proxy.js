@@ -283,7 +283,7 @@ function invalidSyncKeyAction(req, res, target) {
             'Content-Type': 'application/vnd.ms-sync.wbxml'
         });
 
-        res.end(responseHex);
+        res.end(new Buffer(responseHex, 'hex'));
         return true;
     }
 }
