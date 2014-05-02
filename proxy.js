@@ -366,6 +366,13 @@ function syncError500Action(req, res, target) {
 }
 
 function protocolErrorAction(req, res) {
+    console.log('API return protocol error');
+    var responseHex = "03016a00454e0334000101";
+    res.writeHead(200, {
+        'Content-Type': 'application/vnd.ms-sync.wbxml'
+    });
+
+    res.end(new Buffer(responseHex, 'hex'));
     return true;
 }
 
