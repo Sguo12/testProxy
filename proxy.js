@@ -274,7 +274,7 @@ function longtimeoutAction(req, res, target) {
 }
 
 
-function invalidSyncKeyAction(req, res, target) {
+function syncInvalidKeyAction(req, res, target) {
     if (req.url.indexOf('Cmd=Sync') < 0) {
         return false;
     } else {
@@ -377,7 +377,7 @@ var actionTable = {return401 : return401Action,
     longtimeout : longtimeoutAction,
     foldersyncerror500 : folderSyncError500Action,
     foldersyncerror401 : folderSyncError401Action,
-    invalidsynckey : invalidSyncKeyAction,
+    syncinvalidkey : syncInvalidKeyAction,
     syncprotocolerror : syncProtocolErrorAction,
     syncerror500 : syncError500Action,
     syncerror401: syncError401Action,
