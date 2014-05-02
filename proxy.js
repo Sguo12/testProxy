@@ -365,6 +365,18 @@ function syncError500Action(req, res, target) {
     }
 }
 
+function syncErrorDropAction(req, res, target) {
+    if (req.url.indexOf('Cmd=Sync') < 0) {
+        return false;
+    } else {
+        console.log('API Sync, drop');
+
+        res.close();
+
+       return true;
+    }
+}
+
 function protocolErrorAction(req, res) {
     console.log('API return protocol error');
     var responseHex = "03016a00454e0334000101";
@@ -388,6 +400,7 @@ var actionTable = {return401 : return401Action,
     syncprotocolerror : syncProtocolErrorAction,
     syncerror500 : syncError500Action,
     syncerror401: syncError401Action,
+    syncerrordrop: syncErrorDropAction,
     protocolerror : protocolErrorAction
 };
 
