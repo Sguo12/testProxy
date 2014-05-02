@@ -15,7 +15,7 @@ var port = argv.p || 3000;
 var host = argv.h || 'awmdm.com';
 var verbose = argv.v || false;
 
-if (argv.h) {
+if (argv.q) {
     console.log("node proxy.js -v(verbos) [-p userLocalPort#] [-h remoteHostName(for https host only)]");
     return;
 }
@@ -119,8 +119,8 @@ server.on('connect', function(req, socket, head) {
 // use thse options to start our local https server
 //
 var options = {
-    key: fs.readFileSync('./self-ssl.key'),
-    cert: fs.readFileSync('./self-ssl.crt')
+    key: fs.readFileSync('./key.pem'),
+    cert: fs.readFileSync('./cert.pem')
 };
 
 function setupProxyToTarget(req, res, target) {
@@ -162,8 +162,8 @@ function setupProxyToTarget(req, res, target) {
 
                 default:
                     if (verbose) {
-                        console.log('got unzipped response: ' + res.savedBuffer.toString('hex'));
-                        parseAndPrintwbXml(res.savedBuffer);
+                        console.log('got unzipped response: ' + res.savedBuffer.toString());
+//                        parseAndPrintwbXml(res.savedBuffer);
                     }
 
                     break;
@@ -175,7 +175,7 @@ function setupProxyToTarget(req, res, target) {
     res.write = function (data) {
         console.log('got response data >>>>>>');
         res.oldwrite.apply(this, arguments);
-        if (res._headers['content-encoding']) {
+        if (res._headers && res._headers['content-encoding']) {
             res.savedEncoding = res._headers['content-encoding'];
         }
         if (!res.savedBuffer) {
@@ -202,7 +202,7 @@ function createMITMHttpsServer(port) {
         console.log("forward target: " + target);
 
         if (pendingActions.length > 0) {
-            processPendingActions(req, res);
+            processPendingActions(req, res, target);
 
         } else {
             setupProxyToTarget(req, res, target);            
@@ -227,10 +227,10 @@ proxy.on('proxyRes', function (res) {
 // pending test actions
 //
 var pendingActions = [];
+
 //
 // possible pending actions/API end points
 //
-var actionTypes = ['return401', 'return500', 'passthrough', 'droprequest', 'longtimeout'];
 
 function return401Action(req, res) {
     console.log('fake a 401');
@@ -239,6 +239,8 @@ function return401Action(req, res) {
                   });
 
     res.end('Token expired');
+
+    return true;
 }
 
 function return500Action(req, res) {
@@ -248,22 +250,43 @@ function return500Action(req, res) {
                   });
 
     res.end('Really bad things happened');
+
+    return true;
 }
 
-function passthroughAction(req, res) {
-    req.headers.host = scServer;
-    proxy.web(req, res, { target: 'https://' + scServer });
+function passthroughAction(req, res, target) {
+    setupProxyToTarget(req, res, target);
+    return true;
 }
 
 function droprequestAction(req, res) {
 
+    return true;
 }
 
-function longtimeoutAction(req, res) {
+function longtimeoutAction(req, res, target) {
     setTimeout(function() {
-               req.headers.host = scServer;
-               proxy.web(req, res, { target: 'https://' + scServer });
+		    setupProxyToTarget(req, res, target);
                }, 75000);
+    return true;
+}
+
+function invalidSyncKeyAction(req, res, target) {
+    console.log(util.inspect(req));
+    if (req.url.indexOf('Cmd=Sync') < 0) {
+	return false;
+    } else {
+        var responseHex = "03016a00455c4f4b0330000152033500014e03330001010101";
+	res.writeHead(200, {
+                  'Content-Type': 'application/vnd.ms-sync.wbxml'
+                  });
+
+	res.end(responseHex);
+	return true;
+   }
+}
+
+function protocolErrorAction(req, res) {
 }
 
 // api end point action table
@@ -271,7 +294,9 @@ var actionTable = {return401 : return401Action,
     return500 : return500Action,
     passthrough : passthroughAction,
     droprequest : droprequestAction,
-    longtimeout : longtimeoutAction
+    longtimeout : longtimeoutAction,
+    invalidsynckey : invalidSyncKeyAction,
+    protocolerror : protocolErrorAction
 };
 
 //
@@ -287,7 +312,7 @@ function processOurAPI(req, res) {
     pendingActions = [];
 
     for (var property in query) {
-        if (actionTypes.indexOf(property) < 0) {
+        if (Object.keys(actionTable).indexOf(property) < 0) {
             res.writeHead(400, {
                 'Content-Type': 'text/plain'
             });
@@ -320,15 +345,18 @@ function processOurAPI(req, res) {
 //
 // process each pending action in-order
 //
-function processPendingActions(req, res) {
+function processPendingActions(req, res, target) {
     var action = pendingActions.shift();
     console.log(util.inspect(action));
 
-    action.callback(req, res);
-
-    action.count--;
-    if (action.count > 0) {
-        pendingActions.unshift(action);
+    if (action.callback(req, res, target)) {
+        action.count--;
+	if (action.count > 0) {
+		pendingActions.unshift(action);
+	}
+    } else {
+	    pendingActions.unshift(action);
+	    setupProxyToTarget(req, res, target);
     }
 }
 
