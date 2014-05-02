@@ -277,8 +277,8 @@ function invalidSyncKeyAction(req, res, target) {
     if (req.url.indexOf('Cmd=Sync') < 0) {
         return false;
     } else {
-        var responseHex = "03016a00455c4f4b0330000152033500014e03330001010101";
         console.log('API return invalid sync key');
+        var responseHex = "03016a00455c4f4b0330000152033500014e03330001010101";
         res.writeHead(200, {
             'Content-Type': 'application/vnd.ms-sync.wbxml'
         });
@@ -287,7 +287,6 @@ function invalidSyncKeyAction(req, res, target) {
         return true;
     }
 }
-
 
 function folderSyncErrorAction(req, res, target) {
     if (req.url.indexOf('Cmd=FolderSync') < 0) {
@@ -299,6 +298,22 @@ function folderSyncErrorAction(req, res, target) {
         });
 
         res.end('Really bad things happened');
+
+       return true;
+    }
+}
+
+
+function syncErrorAction(req, res, target) {
+    if (req.url.indexOf('Cmd=Sync') < 0) {
+        return false;
+    } else {
+        console.log('API return 500 for Sync');
+        res.writeHead(500, {
+            'Content-Type': 'text/plain'
+        });
+
+        res.end('Really bad things happened during sync');
 
        return true;
     }
@@ -316,6 +331,7 @@ var actionTable = {return401 : return401Action,
     longtimeout : longtimeoutAction,
     invalidsynckey : invalidSyncKeyAction,
     foldersyncerror : folderSyncErrorAction,
+    syncerror : syncErrorAction,
     protocolerror : protocolErrorAction
 };
 
