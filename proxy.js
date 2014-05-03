@@ -371,9 +371,7 @@ function syncErrorDropAction(req, res, target) {
     } else {
         console.log('API Sync, drop');
 
-        res.close();
-
-       return true;
+	return true;
     }
 }
 
