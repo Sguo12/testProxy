@@ -14,9 +14,10 @@ var exec = require('child_process').exec;
 var port = argv.p || 3000;
 var host = argv.h || 'awmdm.com';
 var verbose = argv.v || false;
+var rawtext = argv.r || false;
 
 if (argv.q) {
-    console.log("node proxy.js -v(verbos) [-p userLocalPort#] [-h remoteHostName(for https host only)]");
+    console.log("node proxy.js [-v verbos] -[r rawtext] [-p userLocalPort#] [-h remoteHostName(for https host only)]");
     return;
 }
 
@@ -119,8 +120,8 @@ server.on('connect', function(req, socket, head) {
 // use thse options to start our local https server
 //
 var options = {
-    key: fs.readFileSync('./awmdm-key.pem'),
-    cert: fs.readFileSync('./awmdm-cert.pem')
+    key: fs.readFileSync('./dev38.airwatchdev.key.pem'),
+    cert: fs.readFileSync('./dev38.airwatchdev.cert.pem')
 };
 
 function setupProxyToTarget(req, res, target) {
@@ -132,6 +133,8 @@ function setupProxyToTarget(req, res, target) {
         if (verbose) {
             console.log("got request: " + part.toString('hex'));
             parseAndPrintwbXml(part);
+        } else if (rawtext) {
+            console.log('got request: ' + part);
         }
     });
 
@@ -155,6 +158,9 @@ function setupProxyToTarget(req, res, target) {
                         else if (verbose) {
                             console.log('got zipped response: ' + unzipData.toString('hex'));
                             parseAndPrintwbXml(unzipData);
+                        } else if (rawtext) {
+                            console.log('got zipped response: ' );
+                            console.log(unzipData);
                         }
                     });
 
@@ -164,6 +170,8 @@ function setupProxyToTarget(req, res, target) {
                     if (verbose) {
                         console.log('got unzipped response: ' + res.savedBuffer.toString());
 //                        parseAndPrintwbXml(res.savedBuffer);
+                    } else if (rawtext) {
+                        console.log('got unzipped response: ' + res.savedBuffer);
                     }
 
                     break;
@@ -212,11 +220,14 @@ function createMITMHttpsServer(port) {
 
 
 proxy.on('error', function (err, req, res) {
+    console.log('got error: \r\n' + res._header);
+    /*
     res.writeHead(500, {
         'Content-Type': 'text/plain'
     });
 
     res.end('Something went wrong. And we are reporting a custom error message.');
+    */
 });
 
 proxy.on('proxyRes', function (res) {
@@ -481,6 +492,7 @@ function parseAndPrintwbXml(data) {
     }
 
     var filename = './testdata.hex';
+    console.log('parseAndPrintwbXml');
     fs.writeFile(filename, data.toString('hex'), function(err) {
         if(err) {
             console.log(err);
