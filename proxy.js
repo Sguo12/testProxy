@@ -120,8 +120,8 @@ server.on('connect', function(req, socket, head) {
 // use thse options to start our local https server
 //
 var options = {
-    key: fs.readFileSync('./dev38.airwatchdev.key.pem'),
-    cert: fs.readFileSync('./dev38.airwatchdev.cert.pem')
+    key: fs.readFileSync('./legacy.vmware.key.pem'),
+    cert: fs.readFileSync('./legacy.vmware.cert.pem')
 };
 
 function setupProxyToTarget(req, res, target) {
