@@ -92,6 +92,10 @@ server.on('connect', function(req, socket, head) {
     	});
     }
     
+    proxySocket.on('error', function(e) {
+        console.log('proxySocket error before its connected: ' + e);
+    });
+    
     function proxyConnectedToTarget(ptype) {
         proxySocket.on('end', function() { 
 	           //console.log(ptype + ' proxySocket end');
