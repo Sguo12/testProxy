@@ -22,6 +22,12 @@ if (argv.q) {
 }
 
 //
+// use our own CA to sign the certs
+//
+var CAKey = fs.readFileSync('./CAKey.pem'); 
+var CACert = fs.readFileSync('./CACert.pem')
+
+//
 // Create a proxy server with custom application logic
 //
 var proxy = httpProxy.createProxyServer({});
@@ -69,7 +75,7 @@ server.on('connect', function(req, socket, head) {
         // server will act as a proxy to the destionation server
         //
     	console.log('creating mitm proxy to: ' + req.url);
-        createMITMHttpsServer(localPortNumber);
+        createMITMHttpsServer(req.url, localPortNumber);
 
         // create a local socket connection to the new interceptor https server we just created
         proxySocket = net.connect({port: localPortNumber, host: '127.0.0.1'},  function() { 
@@ -202,8 +208,9 @@ function setupProxyToTarget(req, res, target) {
 // create a https server and watch all the requests coming in,
 // for our own api, process it, otherwise pass to the proxy
 //
-function createMITMHttpsServer(port) {
+function createMITMHttpsServer(host, port) {
     console.log('create local https server on port: ' + port);
+
     https.createServer(options, function (req, res) {
         uri = url.parse(req.url);
         console.log("got uri path: " + uri.path);
