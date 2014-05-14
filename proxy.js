@@ -91,11 +91,11 @@ server.on('connect', function(req, socket, head) {
         // to serve the TLS negoatation. Once the TLS connection is made, the https
         // server will act as a proxy to the destionation server
         //
-    	console.log('creating mitm proxy to: ' + req.url);
-        createMITMHttpsServer(req.url, localPortNumber, function(err) {
+        var portNumber = localPortNumber++;
+        createMITMHttpsServer(req.url, portNumber, function(err) {
 
             // create a local socket connection to the new interceptor https server we just created
-            proxySocket = net.connect({port: localPortNumber, host: '127.0.0.1'},  function() { 
+            proxySocket = net.connect({port: portNumber, host: '127.0.0.1'},  function() { 
 
                 // Connection Successful
                 console.log('mitm proxySocket connected...');
@@ -107,8 +107,6 @@ server.on('connect', function(req, socket, head) {
                 console.log('proxySocket error before its connected: ' + e);
             });
         });
-
-        localPortNumber++;    	
 
     } else {
     	console.log("creating forward proxy to: " + req.url);
@@ -217,6 +215,7 @@ function hostFromUrl(hostUrl) {
     return hostUrl.split(':')[0];
 }
 
+
 //
 // create a https server and watch all the requests coming in,
 // for our own api, process it, otherwise pass to the proxy
@@ -237,15 +236,10 @@ function createMITMHttpsServer(hostUrl, port, callback) {
                 callback(err);
             }
         } else {
-            console.log('created cert for: ' + options.commonName);
             var httpsOptions = {
-//                key: result.clientKey,
-  //              cert: result.certificate,
-                    key: fs.readFileSync('./key.pem'),
-                    cert: fs.readFileSync('./cert.pem'),
+                key: result.clientKey,
+                cert: result.certificate,
             };
-
-            console.log(util.inspect(httpsOptions));
 
             https.createServer(httpsOptions, function (req, res) {
                 uri = url.parse(req.url);
@@ -545,7 +539,6 @@ function parseAndPrintwbXml(data) {
     }
 
     var filename = './testdata.hex';
-    console.log('parseAndPrintwbXml');
     fs.writeFile(filename, data.toString('hex'), function(err) {
         if(err) {
             console.log(err);
