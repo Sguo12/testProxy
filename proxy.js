@@ -13,7 +13,7 @@ var exec = require('child_process').exec;
 var pem = require('pem')
 
 var port = argv.p || 3000;
-var host = argv.h || 'awmdm.com';
+var host = argv.h || '*';
 var verbose = argv.v || false;
 var rawtext = argv.r || false;
 
@@ -85,7 +85,7 @@ server.on('connect', function(req, socket, head) {
     
     var proxySocket = null;
     
-    if (!host || req.url.indexOf(host) != -1) {
+    if (host === '*' || req.url.indexOf(host) != -1) {
         //
         // for each new "connect" request, we create a new internal https server
         // to serve the TLS negoatation. Once the TLS connection is made, the https
@@ -560,3 +560,11 @@ function parseAndPrintwbXml(data) {
         }
     });
 }
+
+/*
+ * Whatever happens, don't just die!
+ */
+process.on('uncaughtException', function (err) {
+    console.log(err);
+}); 
+
