@@ -21,6 +21,9 @@
     "devDependencies": {
         "nodemon": "latest"
     },
+    "devDependencies": {
+        "pem": "latest"
+    },
 	"engines": {
 		"node": "latest",
 		"npm":  "latest"

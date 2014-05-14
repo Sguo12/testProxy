@@ -10,6 +10,7 @@ var util = require('util');
 var argv = require('minimist')(process.argv.slice(2));
 var zlib = require('zlib');
 var exec = require('child_process').exec;
+var pem = require('pem')
 
 var port = argv.p || 3000;
 var host = argv.h || 'awmdm.com';
@@ -26,6 +27,22 @@ if (argv.q) {
 //
 var CAKey = fs.readFileSync('./CAKey.pem'); 
 var CACert = fs.readFileSync('./CACert.pem')
+
+// verify that this is a valid CA
+pem.readCertificateInfo(CACert, function(err, result) {
+    if (err) {
+        var error = new Error('CACert.pem file invalid: ' + err);
+        throw error;
+    }
+});
+
+// verify that this is a valid key
+pem.getPublicKey(CAKey, function(err, result) {
+    if (err) {
+        var error = new Error('CAKey.pem file invalid: ' + err);
+        throw error;
+    }
+});
 
 //
 // Create a proxy server with custom application logic
@@ -75,15 +92,20 @@ server.on('connect', function(req, socket, head) {
         // server will act as a proxy to the destionation server
         //
     	console.log('creating mitm proxy to: ' + req.url);
-        createMITMHttpsServer(req.url, localPortNumber);
+        createMITMHttpsServer(req.url, localPortNumber, function(err) {
 
-        // create a local socket connection to the new interceptor https server we just created
-        proxySocket = net.connect({port: localPortNumber, host: '127.0.0.1'},  function() { 
+            // create a local socket connection to the new interceptor https server we just created
+            proxySocket = net.connect({port: localPortNumber, host: '127.0.0.1'},  function() { 
 
-            // Connection Successful
-            console.log('mitm proxySocket connected...');
+                // Connection Successful
+                console.log('mitm proxySocket connected...');
 
-            proxyConnectedToTarget('mitm');
+                proxyConnectedToTarget('mitm');
+            });
+
+            proxySocket.on('error', function(e) {
+                console.log('proxySocket error before its connected: ' + e);
+            });
         });
 
         localPortNumber++;    	
@@ -97,10 +119,6 @@ server.on('connect', function(req, socket, head) {
             proxyConnectedToTarget('forward');
     	});
     }
-    
-    proxySocket.on('error', function(e) {
-        console.log('proxySocket error before its connected: ' + e);
-    });
     
     function proxyConnectedToTarget(ptype) {
         proxySocket.on('end', function() { 
@@ -120,19 +138,10 @@ server.on('connect', function(req, socket, head) {
         // internal intercepting https server
         //
         socket.pipe(proxySocket).pipe(socket);
-        
     }
 
 });
 
-
-//
-// use thse options to start our local https server
-//
-var options = {
-    key: fs.readFileSync('./legacy.vmware.key.pem'),
-    cert: fs.readFileSync('./legacy.vmware.cert.pem')
-};
 
 function setupProxyToTarget(req, res, target) {
     // proxy this request	
@@ -204,29 +213,62 @@ function setupProxyToTarget(req, res, target) {
     }
 }
 
+function hostFromUrl(hostUrl) {
+    return hostUrl.split(':')[0];
+}
+
 //
 // create a https server and watch all the requests coming in,
 // for our own api, process it, otherwise pass to the proxy
 //
-function createMITMHttpsServer(host, port) {
-    console.log('create local https server on port: ' + port);
+function createMITMHttpsServer(hostUrl, port, callback) {
+    console.log('create local https server on port: ' + port + ' to host ' + hostUrl);
 
-    https.createServer(options, function (req, res) {
-        uri = url.parse(req.url);
-        console.log("got uri path: " + uri.path);
-        console.log("got method: " + req.method);
-        console.log("got header: " + util.inspect(req.headers));
+    var options = {serviceKey: CAKey, 
+                    serviceCertificate: CACert,
+                    commonName: hostFromUrl(hostUrl),
+                    serial : 0x12345678
+    };
 
-        var target = "https://" + req.headers.host + uri.path;
-        console.log("forward target: " + target);
-
-        if (pendingActions.length > 0) {
-            processPendingActions(req, res, target);
-
+    pem.createCertificate(options, function(err, result) {
+        if (err) {
+            console.log('error create cert: ' + err);
+            if (callback) {
+                callback(err);
+            }
         } else {
-            setupProxyToTarget(req, res, target);            
+            console.log('created cert for: ' + options.commonName);
+            var httpsOptions = {
+//                key: result.clientKey,
+  //              cert: result.certificate,
+                    key: fs.readFileSync('./key.pem'),
+                    cert: fs.readFileSync('./cert.pem'),
+            };
+
+            console.log(util.inspect(httpsOptions));
+
+            https.createServer(httpsOptions, function (req, res) {
+                uri = url.parse(req.url);
+                console.log("got uri path: " + uri.path);
+                console.log("got method: " + req.method);
+                console.log("got header: " + util.inspect(req.headers));
+
+                var target = "https://" + req.headers.host + uri.path;
+                console.log("forward target: " + target);
+
+                if (pendingActions.length > 0) {
+                    processPendingActions(req, res, target);
+
+                } else {
+                    setupProxyToTarget(req, res, target);            
+                }
+            }).listen(port);
+
+            if (callback) {
+                callback();
+            }
         }
-    }).listen(port);
+    });
 }
 
 
