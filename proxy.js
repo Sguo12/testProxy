@@ -110,13 +110,16 @@ server.on('connect', function(req, socket, head) {
         });
 
     } else {
-    	console.log("creating forward proxy to: " + req.url);
         var port = portFromUrl(req.url) || 443;
-    	proxySocket = net.connect({port: port, host: req.headers['host']}, function() {
-            // Connection Successful
-            console.log('forward proxySocket connected...');
+    	console.log("creating forward proxy to: " + req.url + ' ' + port);
+    	proxySocket = net.connect({port: port, host: req.headers['host']}, function(err) {
+            if (err) console.log('failed connecting to: ' + req.url);
+            else {
+                // Connection Successful
+                console.log('forward proxySocket connected...');
 
-            proxyConnectedToTarget('forward');
+                proxyConnectedToTarget('forward');
+            }
     	});
     }
     
