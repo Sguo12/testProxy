@@ -82,7 +82,8 @@ server.on('connect', function(req, socket, head) {
     console.log("got url: " + req.url);
     console.log("got method: " + req.method);
     console.log("got header: " + util.inspect(req.headers));
-    
+    console.log("got port: " + portFromUrl(req.url));
+
     var proxySocket = null;
     
     if (host === '*' || req.url.indexOf(host) != -1) {
@@ -110,7 +111,8 @@ server.on('connect', function(req, socket, head) {
 
     } else {
     	console.log("creating forward proxy to: " + req.url);
-    	proxySocket = net.connect({port: 443, host: req.headers['host']}, function() {
+        var port = portFromUrl(req.url) || 443;
+    	proxySocket = net.connect({port: port, host: req.headers['host']}, function() {
             // Connection Successful
             console.log('forward proxySocket connected...');
 
@@ -209,6 +211,13 @@ function setupProxyToTarget(req, res, target) {
             res.savedBuffer = Buffer.concat([res.savedBuffer, data]);
         }
     }
+}
+
+function portFromUrl(hostUrl) {
+    var lists = hostUrl.split(':');
+    if (lists.length > 1) {
+        return lists[1];
+    } else return null;
 }
 
 function hostFromUrl(hostUrl) {
