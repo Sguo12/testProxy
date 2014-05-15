@@ -13,7 +13,7 @@ var exec = require('child_process').exec;
 var pem = require('pem')
 
 var port = argv.p || 3000;
-var host = argv.h || '*';
+var monitorHost = argv.h || '*';
 var verbose = argv.v || false;
 var rawtext = argv.r || false;
 
@@ -82,11 +82,10 @@ server.on('connect', function(req, socket, head) {
     console.log("got url: " + req.url);
     console.log("got method: " + req.method);
     console.log("got header: " + util.inspect(req.headers));
-    console.log("got port: " + portFromUrl(req.url));
 
     var proxySocket = null;
     
-    if (host === '*' || req.url.indexOf(host) != -1) {
+    if (monitorHost === '*' || req.url.indexOf(monitorHost) != -1) {
         //
         // for each new "connect" request, we create a new internal https server
         // to serve the TLS negoatation. Once the TLS connection is made, the https
@@ -112,7 +111,7 @@ server.on('connect', function(req, socket, head) {
     } else {
         var port = portFromUrl(req.url) || 443;
     	console.log("creating forward proxy to: " + req.url + ' ' + port);
-    	proxySocket = net.connect({port: port, host: req.headers['host']}, function(err) {
+    	proxySocket = net.connect({port: port, host: hostFromUrl(req.url)}, function(err) {
             if (err) console.log('failed connecting to: ' + req.url);
             else {
                 // Connection Successful
