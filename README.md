@@ -19,9 +19,9 @@
 * [pem](https://github.com/andris9/pem) - Create private keys and certificates with node.js
 
 ####Installation & Setup & usage
-npm install
-./proxy.js
-./proxy.js -v -s -h vmware.com
+* npm install
+* ./proxy.js
+* ./proxy.js -v -s -h vmware.com
 
 ###Parameters
 * -p port: specify the port to use, default is 3000

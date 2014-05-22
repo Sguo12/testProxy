@@ -278,12 +278,6 @@ function signHost(commonName, callback)
 function createMITMHttpsServer(hostUrl, port, callback) {
     console.log('create local https server on port: ' + port + ' to host ' + hostUrl);
 
-    var options = {serviceKey: CAKey, 
-                    serviceCertificate: CACert,
-                    commonName: hostFromUrl(hostUrl),
-                    serial : 0x12345678
-    };
-
     signHost(hostFromUrl(hostUrl), function(err, result) {
         if (err) {
             console.log('error create cert: ' + err);
@@ -296,6 +290,7 @@ function createMITMHttpsServer(hostUrl, port, callback) {
                 cert: result.certificate,
             };
 
+            // create the mitm server with certs signed by ourself
             https.createServer(httpsOptions, function (req, res) {
                 uri = url.parse(req.url);
                 console.log("got uri path: " + uri.path);
