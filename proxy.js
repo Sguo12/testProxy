@@ -16,11 +16,14 @@ var port = argv.p || 3000;
 var monitorHost = argv.h || '*';
 var verbose = argv.v || false;
 var rawtext = argv.r || false;
+var ignoreSSLError = argv.s || false;
 
 if (argv.q) {
-    console.log("node proxy.js [-v verbos] -[r rawtext] [-p userLocalPort#] [-h remoteHostName(for https host only)]");
+    console.log("node proxy.js [-v verbos] -[r rawtext] [-s ignoreSSLerror] [-p userLocalPort#] [-h remoteHostName(for https host only)]");
     return;
 }
+
+console.log('ignore ssl err = ' + ((ignoreSSLError) ? 'YES' : 'NO'));
 
 //
 // use our own CA to sign the certs
@@ -47,7 +50,11 @@ pem.getPublicKey(CAKey, function(err, result) {
 //
 // Create a proxy server with custom application logic
 //
-var proxy = httpProxy.createProxyServer({});
+var proxyOptions = {};
+if (ignoreSSLError) {
+    proxyOptions = {secure:false};
+}
+var proxy = httpProxy.createProxyServer(proxyOptions);
 
 //
 // Create your custom server and just call `proxy.web()` to proxy
@@ -278,7 +285,7 @@ function createMITMHttpsServer(hostUrl, port, callback) {
 
 
 proxy.on('error', function (err, req, res) {
-    console.log('got error: \r\n' + res._header);
+    console.log('got proxy error:' + err + ' \r\n' + res._header);
     /*
     res.writeHead(500, {
         'Content-Type': 'text/plain'
