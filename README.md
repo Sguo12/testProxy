@@ -1,12 +1,12 @@
 #[testProxy]
 
-####A basic proxy to assist testing of network protocols
+####A forward proxy to assist testing of exchange active sync protocol
 
 * Passthrough proxy that prints everything out to console
 * return 401, 500 selectively by calling the new API
 * return long timeout, drop calls selectively by calling API
-* return EAS sync invalid key if specified
-* Uses self signed certificate so that client under test has to accept that
+* return EAS sync invalid key if specified, the OSX app 'runner' is used to decode wbxml.
+* A new certificate is created for every host using my own ROOT CA, so client under test has to accept that
 * new API can be added to aid in other tests
 
 ***
@@ -16,11 +16,19 @@
 * [Node.js](http://nodejs.org/) - Application Server
 * [node-http-proxy](https://github.com/nodejitsu/node-http-proxy) - The real javascript proxy
 * [node-minimist](https://www.npmjs.org/package/minimist) - command line arguments parser
+* [pem](https://github.com/andris9/pem) - Create private keys and certificates with node.js
 
-####Installation & Setup
+####Installation & Setup & usage
 npm install
 ./proxy.js
+./proxy.js -v -s -h vmware.com
 
+###Parameters
+* -p port: specify the port to use, default is 3000
+* -h hostname: specify which host we will be monitoring, default is All
+* -s when set, we will ignore SSL errors from the server side(accept self signed cert)
+* -r when set, all headers/body will be print out to the console
+* -v when set, all exchange active sync commands will be printed on the console(OSX app 'runnner' is required for the parsing)
 
 ###New API endpoints:
 
@@ -30,7 +38,14 @@ npm install
 * /api/testproxy/actions?droprequest=3
 * /api/testproxy/actions?longtimeout=2
 * /api/testproxy/actions?passthrough=1
-* /api/testproxy/actions?invalidsynckey=1
+* /api/testproxy/actions?syncinvalidkey=1
+* /api/testproxy/actions?foldersyncerror500=1
+* /api/testproxy/actions?foldersyncerror401=1
+* /api/testproxy/actions?syncprotocolerror=1
+* /api/testproxy/actions?syncerror500=1
+* /api/testproxy/actions?syncerror401=1
+* /api/testproxy/actions?syncerrordrop=1
+* /api/testproxy/actions?protocolerror=1
 
 The setters can be combined, so '/api/testproxy/actions?return401=2&passthrough=3&return500=1' will send out two 401
 followed by three passthrough, then one 500.
