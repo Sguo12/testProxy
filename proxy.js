@@ -233,6 +233,43 @@ function hostFromUrl(hostUrl) {
     return hostUrl.split(':')[0];
 }
 
+//
+// save all the signed certs for future use to
+// 1. save time
+// 2. clients do not get a new cert for new connections
+//
+var signedCerts = [];
+var serialnumber = 0x12345678;
+function signHost(commonName, callback)
+{
+    if (!commonName || commonName.length < 1) {
+        if (callback) callback('Can not sign invalid name: ' + commonName);
+        return;
+    }
+
+    if (signedCerts[commonName]) {
+        if (callback) callback(null, signedCerts[commonName]);
+        return;
+    }
+
+    var options = {serviceKey: CAKey, 
+                    serviceCertificate: CACert,
+                    commonName: commonName,
+                    serial : serialnumber++
+    };
+
+    pem.createCertificate(options, function(err, result) {
+        if (err) {
+            console.log('error create cert: ' + err);
+            if (callback) {
+                callback(err);
+            }
+        } else {
+            signedCerts[commonName] = result;
+            if (callback) callback(null, result);
+        }
+    });
+}
 
 //
 // create a https server and watch all the requests coming in,
@@ -247,7 +284,7 @@ function createMITMHttpsServer(hostUrl, port, callback) {
                     serial : 0x12345678
     };
 
-    pem.createCertificate(options, function(err, result) {
+    signHost(hostFromUrl(hostUrl), function(err, result) {
         if (err) {
             console.log('error create cert: ' + err);
             if (callback) {
