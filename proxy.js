@@ -76,7 +76,13 @@ var server = require('http').createServer(function(req, res) {
         fileStream.pipe(res);
     } else {
         uri = url.parse(req.url);
-        proxy.web(req, res, { target: uri.href });
+
+	if (monitorHost === '*' || req.url.indexOf(monitorHost) != -1) {
+		console.log('got req: ' + uri.href);
+		setupProxyToTarget(req, res, uri.href);
+	} else {
+        	proxy.web(req, res, { target: uri.href });
+	}
     }
 });
 
@@ -328,7 +334,9 @@ proxy.on('error', function (err, req, res) {
 });
 
 proxy.on('proxyRes', function (res) {
-    console.log('RAW Response from the target', JSON.stringify(res.headers, true, 2));
+	if (monitorHost === '*' || res.req._headers.host.indexOf(monitorHost) != -1) {
+	console.log('RAW Response from the target', JSON.stringify(res.headers, true, 2));
+	}
 });
 
 //
