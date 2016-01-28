@@ -190,11 +190,11 @@ function setupProxyToTarget(req, res, target) {
                     zlib.unzip(res.savedBuffer, function(err, unzipData) {
                         if (err) console.log('got err unzip data');
                         else if (verbose) {
-                            console.log('got zipped response: ' + unzipData.toString('hex'));
+                            console.log('v got zipped response: ' + unzipData.toString('hex'));
                             parseAndPrintwbXml(unzipData);
                         } else if (rawtext) {
                             console.log('got zipped response: ' );
-                            console.log(unzipData);
+                            console.log(unzipData.toString());
                         }
                     });
 
